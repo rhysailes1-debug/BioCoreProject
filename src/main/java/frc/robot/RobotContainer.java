@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.Commands.drivetrain.FieldDrive;
 import frc.robot.Subsystems.Drivetrain;
 
 public class RobotContainer {
@@ -24,17 +25,18 @@ public class RobotContainer {
 
 
   public RobotContainer() {
-    // drivetrain.setDefaultCommand(
-    // //   new FieldDrive(        
-    // //     () -> -controllerDriver.getLeftY(), 
-    // //     () -> -controllerDriver.getLeftX(), 
-    // //     () -> -controllerDriver.getRightX(),
-    // //     false
-    // //   )
-    // );
+    drivetrain.setDefaultCommand(
+      new FieldDrive(        
+        () -> -controllerDriver.getLeftY(), 
+        () -> -controllerDriver.getLeftX(), 
+        () -> -controllerDriver.getRightX(),
+        false
+      )
+    );
 
 
-    configureBindings();
+    configureBindingsO();
+    configureBindingsD();
 
 
 
@@ -51,7 +53,20 @@ public class RobotContainer {
   }
 
 
-  private void configureBindings() {}
+  //Operator
+  private void configureBindingsO() {}
+
+  //Driver
+  private void configureBindingsD() {
+    controllerDriver.rightBumper().whileTrue(
+      new FieldDrive(        
+        () -> -controllerDriver.getLeftY(), 
+        () -> -controllerDriver.getLeftX(), 
+        () -> -controllerDriver.getRightX(),
+        true
+      )
+    );
+  }
 
   public Command getAutonomousCommand() {
     return Commands.print("No autonomous command configured");

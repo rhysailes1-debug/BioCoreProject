@@ -10,6 +10,7 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 
 import java.io.File;
+import java.util.function.DoubleSupplier;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
@@ -19,11 +20,11 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
-
 import edu.wpi.first.units.measure.MutDistance;
 import edu.wpi.first.units.measure.MutLinearVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
@@ -35,7 +36,6 @@ import edu.wpi.first.wpilibj.sysid.SysIdRoutineLog;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-// import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.LimelightHelpers;
 import frc.robot.Robot;
 import frc.robot.LimelightHelpers.RawFiducial;
@@ -52,8 +52,8 @@ public class Drivetrain extends SubsystemBase {
   public SwerveDrive swerveDrive;
   private RobotConfig config;
   public static final double MAX_SPEED = Units.feetToMeters(14.5); //feet per second
-  public static final double PERCISION_MODE = Units.feetToMeters(3.0);
-  public static final double PERCISION_MODE_ANGLE = Units.degreesToRadians(90);
+  public static final double PRECISION_MODE = Units.feetToMeters(3.0);
+  public static final double PRECISION_MODE_ANGLE = Units.degreesToRadians(90);
   public static final double TURN_MODIFIER = 1.35;
 
   public static final double wheelRadiusFromCenterRobot = 0.3958; //meters
@@ -155,6 +155,11 @@ public class Drivetrain extends SubsystemBase {
     }
     return instance;
   }
+
+  public void drive(Translation2d t, double rot, boolean isFieldRel) {
+    swerveDrive.drive(t, rot, isFieldRel, false);
+  }
+
   public void setChassisSpeeds(ChassisSpeeds speeds) {
     swerveDrive.drive(speeds);
   }
@@ -259,6 +264,43 @@ public class Drivetrain extends SubsystemBase {
 
   public ChassisSpeeds getRobotVelocity() {
     return swerveDrive.getRobotVelocity();
+  }
+
+  public static Pose2d getInputSpeeds(DoubleSupplier vX, DoubleSupplier vY, DoubleSupplier omega, boolean precision) {
+
+    double xVelo = vX.getAsDouble();
+    double yVelo = vY.getAsDouble();
+    double aVelo = omega.getAsDouble();
+
+    xVelo = Math.pow(xVelo, 2) * Math.signum(xVelo) * Drivetrain.MAX_SPEED;
+    yVelo = Math.pow(yVelo, 2) * Math.signum(yVelo) * Drivetrain.MAX_SPEED;
+    aVelo = Math.pow(aVelo, 2) * Math.signum(aVelo) * Math.PI * Drivetrain.TURN_MODIFIER;
+
+    if (precision) {
+      if (xVelo > Drivetrain.PRECISION_MODE) {
+        xVelo = Drivetrain.PRECISION_MODE;
+      }
+      else if (xVelo < -Drivetrain.PRECISION_MODE) {
+        xVelo = -Drivetrain.PRECISION_MODE;
+      }
+      if (yVelo > Drivetrain.PRECISION_MODE) {
+        yVelo = Drivetrain.PRECISION_MODE;
+      }
+      else if (yVelo < -Drivetrain.PRECISION_MODE) {
+        yVelo = -Drivetrain.PRECISION_MODE;
+      }
+      if(aVelo > Drivetrain.PRECISION_MODE_ANGLE) {
+        aVelo = Drivetrain.PRECISION_MODE_ANGLE;
+      } else if (aVelo < -Drivetrain.PRECISION_MODE_ANGLE) {
+        aVelo = -Drivetrain.PRECISION_MODE_ANGLE;
+      }
+    }
+    var alliance = DriverStation.getAlliance();
+    if(alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false) {
+      yVelo *= -1;
+      xVelo *= -1;
+    }
+    return new Pose2d(xVelo, yVelo, new Rotation2d(aVelo));
   }
 
   public double getMatchTime() {
